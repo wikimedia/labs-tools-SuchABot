@@ -164,12 +164,6 @@ if __name__ == '__main__':
     red = redis.StrictRedis(host=REDIS_HOST, db=REDIS_DB)
     logger.info('Redis connection to %s succeded', REDIS_HOST)
 
-    try:
-        while True:
-            data = json.loads(red.brpop(QUEUE_KEY)[1])
-            do_review(data)
-    except:
-        gh.repos(OWNER, name).issues(pr_num).comments.post(body='Sorry, an error occured :( @yuvipanda will now be notified that this sync did not end well')
-        logging.exception("Error!")
-    finally:
-        sys.exit(-1)
+    while True:
+        data = json.loads(red.brpop(QUEUE_KEY)[1])
+        do_review(data)
