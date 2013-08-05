@@ -18,9 +18,11 @@ logger.addHandler(logger_handler)
 
 BASE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
 CONFIG_PATH = os.path.join(BASE_PATH, 'config.yaml')
+REPOS_PATH = os.path.join(BASE_PATH, 'repos.yaml')
 WORKING_DIR = os.path.expanduser("~/.sucharepos")
 
-REPOS_MAPPING = yaml.load(open('repos.yaml'))
+with open(REPOS_PATH) as f:
+    REPOS_MAPPING = yaml.load(f)
 REPOS_GITHUB_TO_GERRIT = REPOS_MAPPING['repos']
 REPOS_GERRIT_TO_GITHUB = {v:k for k, v in REPOS_GITHUB_TO_GERRIT.iteritems()}
 OWNER = "wikimedia"
