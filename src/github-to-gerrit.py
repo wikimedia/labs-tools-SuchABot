@@ -9,6 +9,12 @@ import jinja2
 import yaml
 import re
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+logger_handler = logging.FileHandler(os.path.expanduser('~/logs/github-to-gerrit'))
+logger_handler.setFormatter(logging.Formatter('%(asctime)s %(message)s'))
+logger.addHandler(logger_handler)
+
 
 BASE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
 CONFIG_PATH = os.path.join(BASE_PATH, 'config.yaml')
@@ -54,24 +60,24 @@ def gerrit_name_for(gh_name):
 def ensure_repo(name):
     if not os.path.exists(WORKING_DIR):
         sh.mkdir('-p', WORKING_DIR)
-        logging.info('working directory %s created' % WORKING_DIR)
+        logger.info('working directory %s created' % WORKING_DIR)
     fs_name = name.replace('/', '-')
     clone_folder = os.path.join(WORKING_DIR, fs_name)
     if is_git_repo(clone_folder):
         sh.cd(clone_folder)
-        logging.info("Found Repo. Updating")
+        logger.info("Found Repo. Updating")
         sh.git.fetch('origin')
         sh.git.fetch('gerrit')
-        logging.info("Repo updated")
+        logger.info("Repo updated")
     else:
-        logging.info("Repo not found. Cloning")
+        logger.info("Repo not found. Cloning")
         sh.cd(WORKING_DIR)
         sh.git.clone(GERRIT_TEMPLATE % name, fs_name)
-        logging.info("Clone completed. Setting up git review")
+        logger.info("Clone completed. Setting up git review")
         sh.cd(fs_name)
         sh.git.remote('add', 'gerrit', GERRIT_TEMPLATE % name)
         sh.git.review('-s')
-        logging.info("git review setup")
+        logger.info("git review setup")
 
 
 def get_pullreq(name, number):
@@ -99,6 +105,7 @@ def get_last_change_id():
 
 
 def do_review(pr):
+    logger_handler.setFormatter(logging.Formatter("%%(asctime)%s %s PR#%s %%(message)s" % (pr.base.repo.name, pr.number)))
     name = gerrit_name_for(pr.base.repo.name)
     ensure_repo(name)
     gh_name = pr.base.repo.name
@@ -109,9 +116,9 @@ def do_review(pr):
     if 'tmp' in sh.git.branch():
         sh.git.branch('-D', 'tmp')
     sh.git.checkout(pr.base.sha, '-b', 'tmp')
-    logging.info('Attempting to download & apply patch on top of SHA %s' % pr.base.sha)
+    logger.info('Attempting to download & apply patch on top of SHA %s' % pr.base.sha)
     sh.git.am(sh.curl(pr.patch_url))
-    logging.info('Patch applied successfully')
+    logger.info('Patch applied successfully')
 
     # Author of last patch is going to be the author of the commit on Gerrit. Hmpf
     author = sh.git('--no-pager', 'log', '--no-color', '-n', '1', '--format="%an <%ae>"')
@@ -129,40 +136,31 @@ def do_review(pr):
         change_id = get_last_change_id()
         sh.git.checkout("master")
         sh.git.branch('-D', branch_name)
-        logging.info('Patchset with Id %s already exists', change_id)
+        logger.info('Patchset with Id %s already exists', change_id)
     else:
         is_new = True
-        logging.info('Patchset not found, creating new')
+        logger.info('Patchset not found, creating new')
 
-    logging.info('Attempting to Squash Changes on top of %s in %s', pr.base.sha, branch_name)
+    logger.info('Attempting to Squash Changes on top of %s in %s', pr.base.sha, branch_name)
     sh.git.checkout(pr.base.sha, '-b', branch_name)
     sh.git.merge('--squash', 'tmp')
     sh.git.commit('--author', author, '-m', format_commit_msg(pr, change_id=change_id))
-    logging.info('Changes squashed successfully')
+    logger.info('Changes squashed successfully')
     if is_new:
         change_id = get_last_change_id()
-        logging.info('New Change-Id is %s', change_id)
-    logging.info('Attempting git review')
+        logger.info('New Change-Id is %s', change_id)
+    logger.info('Attempting git review')
     sh.git.review('-t', branch_name)
-    logging.info('git review successful')
+    logger.info('git review successful')
     sh.git.checkout('master') # Set branch back to master when we're done
     if is_new:
         gh.repos(OWNER, gh_name).issues(pr.number).comments.post(body='Submitted to Gerrit: %s' % gerrit_url_for(change_id))
-        logging.info('Left comment on Pull Request')
+        logger.info('Left comment on Pull Request')
 
 if __name__ == '__main__':
-    name = sys.argv[1]
-    pr_num = sys.argv[2]
-
-    logging.basicConfig(
-            format='%%(asctime)s %s PR#%s %%(message)s' % (name, pr_num),
-            filename=os.path.expanduser('~/logs/%s.process' % name),
-            level=logging.INFO
-    )
-
-    logging.info('Attempting to Redis connection to %s', REDIS_HOST)
+    logger.info('Attempting to Redis connection to %s', REDIS_HOST)
     red = redis.StrictRedis(host=REDIS_HOST, db=REDIS_DB)
-    logging.info('Redis connection to %s succeded', REDIS_HOST)
+    logger.info('Redis connection to %s succeded', REDIS_HOST)
 
     try:
         while True:
