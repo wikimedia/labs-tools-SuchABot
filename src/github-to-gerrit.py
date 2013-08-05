@@ -1,13 +1,14 @@
 import os
 import sys
 import logging
+import json
+import re
 
 import redis
 import github
 import sh
 import jinja2
 import yaml
-import re
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
