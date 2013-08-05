@@ -1,0 +1,8 @@
+Jinja2==2.7
+MarkupSafe==0.18
+PyYAML==3.10
+argparse==1.2.1
+distribute==0.6.24
+redis==2.7.6
+sh==1.08
+wsgiref==0.1.2
