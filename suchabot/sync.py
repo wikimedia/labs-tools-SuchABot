@@ -2,6 +2,7 @@ import os
 import sys
 import logging
 
+import redis
 import github
 import sh
 import jinja2
@@ -29,6 +30,9 @@ with open(CONFIG_PATH) as f:
     config = yaml.load(f)
 gh = github.GitHub(username=config['github']['username'], password=config['github']['password'])
 
+REDIS_DB = config['redis']['db']
+REDIS_HOST = config['redis']['host']
+PREFIX = config['github_receiver']['redis_prefix']
 
 def is_git_repo(path):
     return os.path.exists(path) and os.path.exists(os.path.join(path, '.git'))
@@ -145,11 +149,23 @@ def do_review(pr):
 if __name__ == '__main__':
     name = sys.argv[1]
     pr_num = sys.argv[2]
-    job_id = os.environ['JOB_ID']
 
-    logging.basicConfig(format='%%(asctime)s %s PR#%s Job#%s %%(message)s' % (name, pr_num, job_id), filename=os.path.expanduser('~/logs/%s.process' % name), level=logging.INFO)
+    logging.basicConfig(
+            format='%%(asctime)s %s PR#%s %%(message)s' % (name, pr_num),
+            filename=os.path.expanduser('~/logs/%s.process' % name),
+            level=logging.INFO
+    )
+
+    logging.info('Attempting to Redis connection to %s', REDIS_HOST)
+    red = redis.StrictRedis(host=REDIS_HOST, db=REDIS_DB)
+    logging.info('Redis connection to %s succeded', REDIS_HOST)
+
     try:
-        do_review(get_pullreq(name, pr_num))
+        while True:
+            data = json.loads(red.brpop(CLIENT_KEY)[1])
+            do_review(data)
     except:
-        gh.repos(OWNER, name).issues(pr_num).comments.post(body='Sorry, an error occured :( @yuvipanda will now be notified that job#%s did not end well' % job_id)
+        gh.repos(OWNER, name).issues(pr_num).comments.post(body='Sorry, an error occured :( @yuvipanda will now be notified that this sync did not end well')
         logging.exception("Error!")
+    finally:
+        sys.exit(-1)
