@@ -10,16 +10,20 @@ import yaml
 import re
 
 
+BASE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
+CONFIG_PATH = os.path.join(BASE_PATH, 'config.yaml')
 WORKING_DIR = os.path.expanduser("~/.sucharepos")
-CONFIG_PATH = os.path.expanduser('~/.suchabot.yaml')
+
 REPOS_MAPPING = yaml.load(open('repos.yaml'))
 REPOS_GITHUB_TO_GERRIT = REPOS_MAPPING['repos']
 REPOS_GERRIT_TO_GITHUB = {v:k for k, v in REPOS_GITHUB_TO_GERRIT.iteritems()}
 OWNER = "wikimedia"
+
 CHANGE_ID_REGEX = re.compile('Change-Id: (\w+)')
 GERRIT_TAG_REGEX = re.compile('^(Bug|RT):', re.MULTILINE | re.IGNORECASE)
 GERRIT_TEMPLATE = "ssh://suchabot@gerrit.wikimedia.org:29418/%s.git"
 BOT_AUTHOR = "SuchABot <yuvipanda+suchabot@gmail.com>"
+
 COMMIT_MSG_TEMPLATE = jinja2.Template("""{{pr.title}}
 
 {{body}}
@@ -32,7 +36,7 @@ gh = github.GitHub(username=config['github']['username'], password=config['githu
 
 REDIS_DB = config['redis']['db']
 REDIS_HOST = config['redis']['host']
-PREFIX = config['github_receiver']['redis_prefix']
+QUEUE_KEY = config['github']['queue_key']
 
 def is_git_repo(path):
     return os.path.exists(path) and os.path.exists(os.path.join(path, '.git'))
@@ -162,7 +166,7 @@ if __name__ == '__main__':
 
     try:
         while True:
-            data = json.loads(red.brpop(CLIENT_KEY)[1])
+            data = json.loads(red.brpop(QUEUE_KEY)[1])
             do_review(data)
     except:
         gh.repos(OWNER, name).issues(pr_num).comments.post(body='Sorry, an error occured :( @yuvipanda will now be notified that this sync did not end well')

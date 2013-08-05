@@ -23,7 +23,9 @@ COMMENT_TEMPLATE = jinja2.Template("""{{event.author.name}} left a comment on Ge
 
 {{event.comment}}""")
 
-CONFIG_FILE = os.path.expanduser('~/.suchabot.yaml')
+
+BASE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)), '..')
+CONFIG_FILE = os.path.join(BASE_PATH, 'config.yaml')
 with open(CONFIG_FILE) as f:
     config = yaml.load(f)
 

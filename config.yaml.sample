@@ -1,0 +1,12 @@
+github:
+    username: SuchABot
+    password: suchabotsuchabot
+    owner: wikimedia
+    queue_key: "some-long-cryptographically-secure-thing-generated-by-registrar"
+gerrit:
+    username: suchabot
+    server: gerrit.wikimedia.org
+    port: 29418
+redis:
+    host: tools-redis
+    db: 7
