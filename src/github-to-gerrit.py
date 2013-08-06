@@ -83,8 +83,7 @@ def ensure_repo(name):
         logger.info("git review setup")
 
 
-def get_pullreq(name, number):
-    gh_name = name.replace('/', '-')
+def get_pullreq(gh_name, number):
     pr = gh.repos(OWNER, gh_name).pulls(number).get()
     return pr
 
@@ -167,4 +166,5 @@ if __name__ == '__main__':
 
     while True:
         data = json.loads(red.brpop(QUEUE_KEY)[1])
-        do_review(data)
+        pr = get_pullreq(data['pull_request']['base']['repo']['name'], data['pull_request']['number'])
+        do_review(pr)
