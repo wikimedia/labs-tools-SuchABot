@@ -167,5 +167,6 @@ if __name__ == '__main__':
 
     while True:
         data = json.loads(red.brpop(QUEUE_KEY)[1])
-        pr = get_pullreq(data['pull_request']['base']['repo']['name'], data['pull_request']['number'])
-        do_review(pr)
+        # Only pull requests for now.
+        pr = data['pull_request']
+        do_review(get_pullreq(pr['base']['repo']['name'], pr['number']))
