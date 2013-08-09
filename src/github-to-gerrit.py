@@ -70,7 +70,6 @@ def ensure_repo(name):
     if is_git_repo(clone_folder):
         sh.cd(clone_folder)
         logger.info("Found Repo. Updating")
-        sh.git.fetch('origin')
         sh.git.fetch('gerrit')
         logger.info("Repo updated")
     else:
@@ -80,7 +79,7 @@ def ensure_repo(name):
         logger.info("Clone completed. Setting up git review")
         sh.cd(fs_name)
         sh.git.remote('add', 'gerrit', GERRIT_TEMPLATE % name)
-        sh.git.review('-s')
+        sh.scp('-p', '-P', '29418', 'suchabot@gerrit.wikimedia.org:hooks/commit-msg', '.git/hooks/')
         logger.info("git review setup")
 
 
@@ -152,13 +151,15 @@ def do_review(pr):
     if is_new:
         change_id = get_last_change_id()
         logger.info('New Change-Id is %s', change_id)
-    logger.info('Attempting git review')
-    sh.git.review('-t', branch_name)
-    logger.info('git review successful')
+    logger.info('Attempting to push refs for review')
+    sh.git.push('gerrit', 'HEAD:refs/for/master') # FIXME: Push for non master too!
+    logger.info('Pushed refs for review')
     sh.git.checkout('master') # Set branch back to master when we're done
     if is_new:
         gh.repos(OWNER, gh_name).issues(pr.number).comments.post(body='Submitted to Gerrit: %s' % gerrit_url_for(change_id))
         logger.info('Left comment on Pull Request')
+
+
 
 if __name__ == '__main__':
     logger.info('Attempting to Redis connection to %s', REDIS_HOST)
