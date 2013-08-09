@@ -106,7 +106,8 @@ def get_last_change_id():
     return list(CHANGE_ID_REGEX.finditer(header))[-1].group(1)
 
 
-def do_review(pr):
+def do_review(data):
+    pr = get_pullreq(data['pull_request']['base']['repo']['name'], data['pull_request']['number'])
     logger_handler.setFormatter(logging.Formatter("%%(asctime)s %s PR#%s %%(message)s" % (pr.base.repo.name, pr.number)))
     name = gerrit_name_for(pr.base.repo.name)
     ensure_repo(name)
@@ -160,6 +161,12 @@ def do_review(pr):
         logger.info('Left comment on Pull Request')
 
 
+# Needs to be better for handling more hooks, but works for now
+handlers = {
+        "opened": do_review,
+        "synchronize": do_review,
+        "reopened": do_review
+}
 
 if __name__ == '__main__':
     logger.info('Attempting to Redis connection to %s', REDIS_HOST)
@@ -168,6 +175,9 @@ if __name__ == '__main__':
 
     while True:
         data = json.loads(red.brpop(QUEUE_KEY)[1])
-        # Only pull requests for now.
-        pr = data['pull_request']
-        do_review(get_pullreq(pr['base']['repo']['name'], pr['number']))
+        # Only pull requests for now. And do not handle closing yet
+        action = data['action']
+        if action in handlers:
+            handlers[action](data)
+        else:
+            logger.info('Ignoring action %s', action)
