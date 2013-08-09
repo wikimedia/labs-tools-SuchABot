@@ -108,7 +108,7 @@ def get_last_change_id():
 
 
 def do_review(pr):
-    logger_handler.setFormatter(logging.Formatter("%%(asctime)%s %s PR#%s %%(message)s" % (pr.base.repo.name, pr.number)))
+    logger_handler.setFormatter(logging.Formatter("%%(asctime)s %s PR#%s %%(message)s" % (pr.base.repo.name, pr.number)))
     name = gerrit_name_for(pr.base.repo.name)
     ensure_repo(name)
     gh_name = pr.base.repo.name
