@@ -1,6 +1,6 @@
 github:
     username: SuchABot
-    password: suchabotsuchabot
+    password: not-really-the-real-password
     owner: wikimedia
     queue_key: "some-long-cryptographically-secure-thing-generated-by-registrar"
 gerrit:
